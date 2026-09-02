@@ -31,3 +31,12 @@ def create_access_token(user_id, expires_delta: timedelta | None = None):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, setting.SECRET_KEY, algorithm=setting.ALGORITHM)
     return encoded_jwt
+
+
+def decode_access_token(token):
+
+    payload = jwt.decode(token, setting.SECRET_KEY, algorithms=[setting.ALGORITHM])
+
+    return payload
+
+
