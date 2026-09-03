@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import select, or_
 
 from sqlalchemy.orm import Session
@@ -50,7 +50,7 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/auth/login", response_model=Token)
-def login(user: UserLogin, db: Session = Depends(get_db)):
+def login(user: UserLogin, response: Response, db: Session = Depends(get_db)):
     """Function for successful login"""
 
     username = db.execute(select(User).where(User.username == user.username))
@@ -65,5 +65,9 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Incorrect password")
 
     token = create_access_token(username_result.id)
+
+    response.set_cookie(
+        key="token", value=token, httponly=True, secure=False, samesite="lax"
+    )
 
     return {"access_token": token, "token_type": "bearer"}
