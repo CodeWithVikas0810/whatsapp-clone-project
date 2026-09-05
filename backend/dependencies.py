@@ -1,6 +1,6 @@
 """Reusable user authentication dependency"""
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Cookie
 from fastapi.security import (
     OAuth2PasswordBearer,
     HTTPBearer,
@@ -21,11 +21,41 @@ security = HTTPBearer()
 # oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
+# def get_current_user(
+#     credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
+#     db: Session = Depends(get_db),
+# ):
+#     token = credentials.credentials
+
+#     try:
+#         payload = decode_access_token(token)
+#     except jwt.PyJWTError as exc:
+#         raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             detail="Could not validate credentials",
+#         ) from exc
+#     user_id = payload["sub"]
+
+#     user_info = db.execute(select(User).where(User.id == user_id))
+#     user = user_info.scalar_one_or_none()
+
+#     if user is None:
+#         raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             detail="User not found",
+#         )
+#     return user
+
+
 def get_current_user(
-    credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
+    token: str | None = Cookie(default=None),
     db: Session = Depends(get_db),
 ):
-    token = credentials.credentials
+    if token is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+        )
 
     try:
         payload = decode_access_token(token)
@@ -34,16 +64,23 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
         ) from exc
-    user_id = payload["sub"]
 
-    user_info = db.execute(select(User).where(User.id == user_id))
-    user = user_info.scalar_one_or_none()
+    user_id = payload.get("sub")
+
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+        )
+
+    user = db.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
 
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
         )
+
     return user
 
 
